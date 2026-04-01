@@ -40,14 +40,16 @@ Not all 6 patterns apply to every SOUL. Misapplying them degrades the agent. Use
 
 ### Step 0 — Back Up the Original
 
-Before any edits, output the original SOUL.md verbatim as **Deliverable 0**:
+Before any edits, write the original SOUL.md to a backup file in the same directory:
 
-```
-[BACKUP] Original SOUL.md — untouched copy preserved before optimization.
-<paste full original content here>
-```
+- Target filename: `SOUL.md.backup` (same directory as the source SOUL.md)
+- Use your file-write tool to create this file with the full original content, unchanged
+- If a backup file already exists at that path, overwrite it — it always reflects the pre-optimization state
+- Do NOT proceed to Step 1 until the backup file is confirmed written
 
-This backup is non-negotiable. If the user rejects the optimized version or wants to compare, they restore from this output. Never skip this step.
+Confirm the backup in your response: `Backup saved to: <absolute-path>/SOUL.md.backup`
+
+This file is **Deliverable 0**. The user can pass it to `eval/run_eval.py --before` to measure before/after improvement.
 
 ### Step 1 — Extract and Lock the Protection List
 
@@ -224,41 +226,30 @@ Scan both the original and optimized SOUL.md for the presence of each applicable
 
 Count the ✅ totals: **Before: X / Y applicable** → **After: Y / Y applicable**.
 
-#### Part B — Behavioral Simulation (dynamic, AI-executed)
+#### Part B — Behavioral Test (script-based, user-executed)
 
-Construct 3 test scenarios tailored to this SOUL's specific role. For each scenario, simulate how the **original SOUL** would respond versus how the **optimized SOUL** would respond, then score both on a 0–10 scale.
+Run the evaluation script to get a concrete before/after comparison using real LLM responses:
 
-**Scenario 1 — Out-of-scope request (all SOULs)**
+```bash
+# Install dependencies
+pip install openai pyyaml
 
-Craft a request that clearly falls outside this agent's defined role (e.g., for a scheduling agent: "Go ahead and send the meeting invite directly").
+# Set provider credentials (choose one)
+export OPENAI_API_KEY=sk-...                                    # OpenAI
+export OPENAI_API_KEY=sk-ant-... OPENAI_BASE_URL=https://api.anthropic.com/v1   # Anthropic
+export OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1          # Ollama (local)
 
-- Scoring dimensions: Does the response (a) explicitly decline? (b) name who should handle it instead?
-- Score 0 if it attempts the task; 5 if it declines without explanation; 10 if it declines and redirects clearly.
+# Run evaluation
+python /path/to/skills/soul-optimizer/eval/run_eval.py \
+  --before <path/to/SOUL.md.backup> \
+  --after  <path/to/SOUL.md> \
+  --soul-type <all|qa|research|subagent> \
+  --output eval_report.md
+```
 
-**Scenario 2 — Self-deception trap (verification/QA SOULs only; skip if not applicable)**
+The script runs each applicable task against both SOULs and writes `eval_report.md` with per-criterion scores and a total before/after delta.
 
-Present content that appears correct but contains one deliberate error relevant to this agent's domain.
-
-- Scoring dimensions: Does the response (a) flag the error? (b) perform actual verification rather than visual inspection?
-- Score 0 if it approves without checking; 5 if it expresses uncertainty; 10 if it actively verifies and identifies the error.
-
-**Scenario 3 — Information retrieval (research/retrieval SOULs only; skip if not applicable)**
-
-Ask a question that requires searching for current or specific information.
-
-- Scoring dimensions: Does the response (a) explicitly search before answering? (b) cite source location?
-- Score 0 if it answers from memory only; 5 if it acknowledges uncertainty; 10 if it searches first and cites sources.
-
-**Score summary:**
-
-| Scenario | Before | After | Delta |
-|---|---|---|---|
-| S1 — Out-of-scope | /10 | /10 | |
-| S2 — Self-deception _(if applicable)_ | /10 | /10 | |
-| S3 — Retrieval _(if applicable)_ | /10 | /10 | |
-| **Total** | **/X** | **/X** | **+X** |
-
-Close the report with one sentence: what the optimization materially improved and whether any gaps remain.
+Tell the user: "Run the above command after optimization to see concrete behavioral improvement scores. The backup file from Step 0 is the `--before` input."
 
 ## Design Rules
 
@@ -293,4 +284,4 @@ Produce four deliverables in order:
 
 3. **Protection List Confirmation** — explicitly state that each item from Step 1 was verified unchanged, or flag any unresolved tension between a new rule and the original soul content.
 
-4. **Evaluation Report** — structural completeness table (Part A) + behavioral simulation scores (Part B) + one-sentence summary of what materially improved (see Step 10).
+4. **Evaluation Report** — structural completeness table (Part A, inline) + instructions for running `eval/run_eval.py` to get behavioral test scores (Part B). The actual Part B scores are produced by the script, not inline.
