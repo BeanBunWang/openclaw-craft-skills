@@ -22,6 +22,17 @@
 
 **核心约束：** 模式 5（结构化 JSON handoff）设有门控条件：仅在多 session 编排系统中的子 Agent SOUL 上应用，对话型助手 SOUL 不适用。
 
+**6 个模式具体会往 SOUL.md 里加什么：**
+
+| 模式 | 添加内容 | 门控条件 |
+|---|---|---|
+| P1 — 简洁任务报告 | `## Reporting Results`：子 Agent 只报"做了什么 / 关键产出 / 阻断项"，不回传推理过程 | 仅限子 Agent |
+| P2 — 角色隔离 | `## Boundaries`：用"EXCLUSIVELY responsible for"明确职责边界，列出不做的操作 | 所有 SOUL |
+| P3 — 反自我欺骗 | `## Self-Check Before Completing`：针对该 Agent 的自欺模式（如"看起来没问题"）写出逐条反转动作 | 仅限验证/QA 型 SOUL |
+| P4 — 分层禁令 | `## Hard Limits`：将平铺的"不做 X"改为 NEVER / CONFIRM / AUTO 三层，不可逆操作单独置顶 | 所有 SOUL |
+| P5 — 结构化 JSON 交接 | `## Output Format`：定义向协调者上报的 JSON schema（status / result / key_points / confidence / next_action） | 仅限子 Agent + 父 Agent 机器读取时 |
+| P6 — 主动探索策略 | `## Before Acting, Explore First`：先广撒网搜索、多路径验证，再执行，结论须附来源位置 | 信息检索/研究型 SOUL |
+
 **来源于 Claude Code 的 prompt 模式：**
 - `src/constants/prompts.ts` — `getSimpleDoingTasksSection()`、`getActionsSection()`、`getOutputEfficiencySection()`
 - `src/tools/AgentTool/built-in/verificationAgent.ts` — 反自我欺骗清单

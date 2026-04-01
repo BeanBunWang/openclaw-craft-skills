@@ -22,6 +22,17 @@ Analyzes and optimizes an openclaw `SOUL.md` by selectively applying Claude Code
 
 **Key constraint:** Pattern 5 (structured JSON handoff) is gated: applied only to sub-agents in multi-session orchestration setups, not to conversational assistant souls.
 
+**What each of the 6 patterns actually adds to your SOUL.md:**
+
+| Pattern | What gets added | Gate |
+|---|---|---|
+| P1 — Concise Task Reporting | `## Reporting Results`: sub-agent reports only "what was done / key output / blockers" — no reasoning trace | Sub-agents only |
+| P2 — Role Isolation | `## Boundaries`: "EXCLUSIVELY responsible for" declaration + explicit list of out-of-scope operations | All SOULs |
+| P3 — Anti-Rationalization | `## Self-Check Before Completing`: role-specific self-deception triggers (e.g. "looks fine") paired with mandatory counter-actions | Verification / QA SOULs only |
+| P4 — Tiered Prohibitions | `## Hard Limits`: flat "don't do X" rules restructured into NEVER / CONFIRM / AUTO tiers; irreversible actions placed at top | All SOULs |
+| P5 — Structured JSON Handoff | `## Output Format`: explicit JSON schema for machine-readable handoff to coordinator (status / result / key_points / confidence / next_action) | Sub-agents only, when parent parses output programmatically |
+| P6 — Proactive Exploration | `## Before Acting, Explore First`: cast wide before acting, try multiple search paths, cite source locations for all conclusions | Information-retrieval / research SOULs |
+
 **Source patterns from Claude Code:**
 - `src/constants/prompts.ts` — `getSimpleDoingTasksSection()`, `getActionsSection()`, `getOutputEfficiencySection()`
 - `src/tools/AgentTool/built-in/verificationAgent.ts` — anti-rationalization checklist

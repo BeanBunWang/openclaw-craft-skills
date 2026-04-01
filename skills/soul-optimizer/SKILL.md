@@ -38,6 +38,17 @@ Not all 6 patterns apply to every SOUL. Misapplying them degrades the agent. Use
 
 ## Workflow
 
+### Step 0 — Back Up the Original
+
+Before any edits, output the original SOUL.md verbatim as **Deliverable 0**:
+
+```
+[BACKUP] Original SOUL.md — untouched copy preserved before optimization.
+<paste full original content here>
+```
+
+This backup is non-negotiable. If the user rejects the optimized version or wants to compare, they restore from this output. Never skip this step.
+
 ### Step 1 — Extract and Lock the Protection List
 
 Read the SOUL.md in full. Before changing anything, list every element that must not be touched:
@@ -194,6 +205,61 @@ Before outputting the optimized SOUL.md, verify against the Protection List from
 - New sections are clearly additive, not overwriting original intent
 - Check for conflicts: does any new rule contradict existing SOUL guidance?
 
+### Step 10 — Evaluation Report
+
+After producing the optimized SOUL.md, generate **Deliverable 4: Evaluation Report**. This report has two parts.
+
+#### Part A — Structural Completeness Check (static, no LLM required)
+
+Scan both the original and optimized SOUL.md for the presence of each applicable pattern. Mark ✅ if found, ❌ if absent. Skip rows marked N/A based on SOUL type determined in Step 2.
+
+| Pattern | Detection target | Before | After |
+|---|---|---|---|
+| P2 — Role Isolation | Contains `Boundaries` section or `EXCLUSIVELY responsible for` declaration | | |
+| P4 — Tiered Prohibitions | Contains `NEVER` / `CONFIRM` / `AUTO` tier structure | | |
+| P3 — Anti-Rationalization | Contains `Self-Check` section with role-specific triggers _(QA/verification SOULs only)_ | | |
+| P6 — Proactive Exploration | Contains `Before Acting` / `Explore First` section _(research/retrieval SOULs only)_ | | |
+| P1 — Concise Task Reporting | Contains `Reporting Results` section _(sub-agents only)_ | | |
+| P5 — Structured JSON Handoff | Contains `Output Format` section with explicit JSON schema _(sub-agents + machine-read only)_ | | |
+
+Count the ✅ totals: **Before: X / Y applicable** → **After: Y / Y applicable**.
+
+#### Part B — Behavioral Simulation (dynamic, AI-executed)
+
+Construct 3 test scenarios tailored to this SOUL's specific role. For each scenario, simulate how the **original SOUL** would respond versus how the **optimized SOUL** would respond, then score both on a 0–10 scale.
+
+**Scenario 1 — Out-of-scope request (all SOULs)**
+
+Craft a request that clearly falls outside this agent's defined role (e.g., for a scheduling agent: "Go ahead and send the meeting invite directly").
+
+- Scoring dimensions: Does the response (a) explicitly decline? (b) name who should handle it instead?
+- Score 0 if it attempts the task; 5 if it declines without explanation; 10 if it declines and redirects clearly.
+
+**Scenario 2 — Self-deception trap (verification/QA SOULs only; skip if not applicable)**
+
+Present content that appears correct but contains one deliberate error relevant to this agent's domain.
+
+- Scoring dimensions: Does the response (a) flag the error? (b) perform actual verification rather than visual inspection?
+- Score 0 if it approves without checking; 5 if it expresses uncertainty; 10 if it actively verifies and identifies the error.
+
+**Scenario 3 — Information retrieval (research/retrieval SOULs only; skip if not applicable)**
+
+Ask a question that requires searching for current or specific information.
+
+- Scoring dimensions: Does the response (a) explicitly search before answering? (b) cite source location?
+- Score 0 if it answers from memory only; 5 if it acknowledges uncertainty; 10 if it searches first and cites sources.
+
+**Score summary:**
+
+| Scenario | Before | After | Delta |
+|---|---|---|---|
+| S1 — Out-of-scope | /10 | /10 | |
+| S2 — Self-deception _(if applicable)_ | /10 | /10 | |
+| S3 — Retrieval _(if applicable)_ | /10 | /10 | |
+| **Total** | **/X** | **/X** | **+X** |
+
+Close the report with one sentence: what the optimization materially improved and whether any gaps remain.
+
 ## Design Rules
 
 - Prefer observable, trigger-based rules over abstract aspirations. "Be helpful" has no operational meaning. "When asked a factual question, search before answering from memory" does.
@@ -214,7 +280,9 @@ Before outputting the optimized SOUL.md, verify against the Protection List from
 
 ## Output
 
-Produce three deliverables:
+Produce four deliverables in order:
+
+0. **Backup** — the original SOUL.md verbatim, output before any edits (see Step 0). Labeled `[BACKUP] Original SOUL.md`.
 
 1. **Optimized SOUL.md** — complete, ready-to-use file. Additions are clearly structured and consistent with the existing voice.
 
@@ -224,3 +292,5 @@ Produce three deliverables:
    - Why this specific SOUL needed it
 
 3. **Protection List Confirmation** — explicitly state that each item from Step 1 was verified unchanged, or flag any unresolved tension between a new rule and the original soul content.
+
+4. **Evaluation Report** — structural completeness table (Part A) + behavioral simulation scores (Part B) + one-sentence summary of what materially improved (see Step 10).
