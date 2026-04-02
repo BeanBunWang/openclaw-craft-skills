@@ -49,7 +49,7 @@ Before any edits, write the original SOUL.md to a backup file in the same direct
 
 Confirm the backup in your response: `Backup saved to: <absolute-path>/SOUL.md.backup`
 
-This file is **Deliverable 0**. The user can pass it to `eval/run_eval.py --before` to measure before/after improvement.
+This file is **Deliverable 0**. The user can pass it to `scripts/run_eval.py --before` to measure before/after improvement.
 
 ### Step 1 — Extract and Lock the Protection List
 
@@ -233,7 +233,7 @@ The evaluation script sends test prompts directly to the openclaw agent, grades 
 **Recommended: one-command guided flow**
 
 ```bash
-python /path/to/skills/soul-optimizer/eval/run_eval.py full \
+python /path/to/skills/soul-optimizer/scripts/run_eval.py full \
   --soul-path <path/to/SOUL.md> \
   --soul-type <all|qa|research|subagent>
 ```
@@ -248,11 +248,11 @@ The script runs the baseline, pauses with instructions to optimize + restart, th
 
 ```bash
 # Before (run NOW, before any changes)
-python /path/to/skills/soul-optimizer/eval/run_eval.py run \
+python /path/to/skills/soul-optimizer/scripts/run_eval.py run \
   --phase before --soul-path <path/to/SOUL.md> --soul-type <all|qa|research|subagent>
 
 # After optimization + gateway restart
-python /path/to/skills/soul-optimizer/eval/run_eval.py run \
+python /path/to/skills/soul-optimizer/scripts/run_eval.py run \
   --phase after  --soul-path <path/to/SOUL.md> --soul-type <all|qa|research|subagent>
 ```
 
@@ -291,4 +291,4 @@ Produce four deliverables in order:
 
 3. **Protection List Confirmation** — explicitly state that each item from Step 1 was verified unchanged, or flag any unresolved tension between a new rule and the original soul content.
 
-4. **Evaluation Report** — structural completeness table (Part A, inline) + instructions for running `eval/run_eval.py run --phase before/after` via the openclaw agent CLI (Part B). The script auto-generates `eval_report.md` with before/after behavioral scores.
+4. **Evaluation Report** — structural completeness table (Part A, inline) + instructions for running `scripts/run_eval.py run --phase before/after` via the openclaw agent CLI (Part B). The script auto-generates `eval_report.md` with before/after behavioral scores.

@@ -21,7 +21,7 @@ That's it. The script calls `openclaw agent` directly — your existing openclaw
 The `full` command guides you through the entire flow in one session:
 
 ```bash
-python eval/run_eval.py full \
+python scripts/run_eval.py full \
   --soul-path ~/.openclaw/workspace-ops/SOUL.md \
   --soul-type all
 ```
@@ -61,7 +61,7 @@ If you prefer to run before and after in separate terminal sessions:
 
 ```bash
 # Step 1 — baseline (before optimization)
-python eval/run_eval.py run \
+python scripts/run_eval.py run \
   --phase before \
   --soul-path ~/.openclaw/workspace-ops/SOUL.md \
   --soul-type all
@@ -69,7 +69,7 @@ python eval/run_eval.py run \
 # ... run soul-optimizer, then: openclaw gateway restart ...
 
 # Step 2 — after optimization (report auto-generated)
-python eval/run_eval.py run \
+python scripts/run_eval.py run \
   --phase after \
   --soul-path ~/.openclaw/workspace-ops/SOUL.md \
   --soul-type all
@@ -81,7 +81,7 @@ python eval/run_eval.py run \
 ## How It Works
 
 ```
-eval/tasks/
+scripts/tasks/
 ├── task_01_boundary.md              P2, P4  — soul_type: all
 ├── task_02_anti_rationalization.md   P3      — soul_type: qa
 ├── task_03_exploration.md            P6      — soul_type: research
@@ -152,7 +152,7 @@ eval_run/
 If you change grading logic or want to regenerate after the fact:
 
 ```bash
-python eval/run_eval.py report \
+python scripts/run_eval.py report \
   --before eval_run/before \
   --after  eval_run/after \
   --output eval_run/eval_report.md
