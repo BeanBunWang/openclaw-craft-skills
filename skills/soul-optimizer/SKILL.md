@@ -226,30 +226,37 @@ Scan both the original and optimized SOUL.md for the presence of each applicable
 
 Count the ✅ totals: **Before: X / Y applicable** → **After: Y / Y applicable**.
 
-#### Part B — Behavioral Test (script-based, user-executed)
+#### Part B — Behavioral Test (via openclaw agent CLI)
 
-Run the evaluation script to get a concrete before/after comparison using real LLM responses:
+The evaluation script sends test prompts directly to the openclaw agent, grades its real responses, and produces a scored before/after report. No API key needed — one dependency: `pip install pyyaml`.
+
+**Recommended: one-command guided flow**
 
 ```bash
-# Install dependencies
-pip install openai pyyaml
-
-# Set provider credentials (choose one)
-export OPENAI_API_KEY=sk-...                                    # OpenAI
-export OPENAI_API_KEY=sk-ant-... OPENAI_BASE_URL=https://api.anthropic.com/v1   # Anthropic
-export OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1          # Ollama (local)
-
-# Run evaluation
-python /path/to/skills/soul-optimizer/eval/run_eval.py \
-  --before <path/to/SOUL.md.backup> \
-  --after  <path/to/SOUL.md> \
-  --soul-type <all|qa|research|subagent> \
-  --output eval_report.md
+python /path/to/skills/soul-optimizer/eval/run_eval.py full \
+  --soul-path <path/to/SOUL.md> \
+  --soul-type <all|qa|research|subagent>
 ```
 
-The script runs each applicable task against both SOULs and writes `eval_report.md` with per-criterion scores and a total before/after delta.
+The agent name is derived automatically from the workspace directory:
+- `workspace-ops/SOUL.md` → uses `--agent ops`
+- `workspace/SOUL.md` → uses default main agent
 
-Tell the user: "Run the above command after optimization to see concrete behavioral improvement scores. The backup file from Step 0 is the `--before` input."
+The script runs the baseline, pauses with instructions to optimize + restart, then runs the post-optimization pass and writes `eval_run/eval_report.md` automatically.
+
+**Alternative: manual two-step**
+
+```bash
+# Before (run NOW, before any changes)
+python /path/to/skills/soul-optimizer/eval/run_eval.py run \
+  --phase before --soul-path <path/to/SOUL.md> --soul-type <all|qa|research|subagent>
+
+# After optimization + gateway restart
+python /path/to/skills/soul-optimizer/eval/run_eval.py run \
+  --phase after  --soul-path <path/to/SOUL.md> --soul-type <all|qa|research|subagent>
+```
+
+Tell the user: "Run the `full` command (or `--phase before`) now, before I make any changes, to capture the baseline. After optimization and restart, the after-phase runs and the report is generated automatically."
 
 ## Design Rules
 
@@ -284,4 +291,4 @@ Produce four deliverables in order:
 
 3. **Protection List Confirmation** — explicitly state that each item from Step 1 was verified unchanged, or flag any unresolved tension between a new rule and the original soul content.
 
-4. **Evaluation Report** — structural completeness table (Part A, inline) + instructions for running `eval/run_eval.py` to get behavioral test scores (Part B). The actual Part B scores are produced by the script, not inline.
+4. **Evaluation Report** — structural completeness table (Part A, inline) + instructions for running `eval/run_eval.py run --phase before/after` via the openclaw agent CLI (Part B). The script auto-generates `eval_report.md` with before/after behavioral scores.
