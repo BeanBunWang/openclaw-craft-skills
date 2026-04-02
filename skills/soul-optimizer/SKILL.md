@@ -1,236 +1,263 @@
 ---
 name: soul-optimizer
-description: Analyze and optimize an openclaw SOUL.md to improve execution reliability using Claude Code's production prompt patterns. Use when you want to improve, audit, or refine a SOUL.md for an openclaw agent — especially to add behavioral clarity, anti-rationalization guards, and operational boundaries without changing the agent's role or personality. Trigger on any request involving "optimize SOUL", "improve SOUL.md", "refine agent soul", "openclaw soul", or audit of virtual employee configuration.
+description: >-
+  分析并优化 openclaw SOUL.md，通过注入 Claude Code 生产提示工程模式提升执行可靠性。
+  当你想改进、审查或精炼某个 openclaw agent 的 SOUL.md 时使用——
+  尤其是添加行为边界、反合理化防护和操作约束，同时保留 agent 的角色与人格。
+  触发关键词：优化 SOUL、改进 SOUL.md、完善 agent soul、openclaw soul、
+  虚拟员工配置审查、optimize SOUL、improve SOUL.md、refine agent soul。
 ---
 
 # Soul Optimizer
+**openclaw SOUL.md 执行可靠性优化工具**
 
-## Overview
+## 概述
 
-Improve a SOUL.md's execution reliability by injecting concrete behavioral rules derived from Claude Code's production prompt engineering. The distinction that matters: the **soul** (role identity, personality, values, communication style) is sacred and untouchable. The **execution skeleton** (what to do, what not to do, when to verify, how to report) is exactly what this skill strengthens.
+通过注入来自 Claude Code 生产提示工程的具体行为规则，提升 SOUL.md 的执行可靠性。
 
-Think of it as adding load-bearing structure to an existing personality: the character stays, the performance sharpens.
+核心原则：**灵魂（Soul）神圣不可侵**，**执行骨架可强化**。
 
-## Source Anchors
+- **灵魂**：角色身份、人格特质、价值观、沟通风格 → 绝对不改动
+- **执行骨架**：做什么、不做什么、何时核验、如何汇报 → 这正是本技能要强化的部分
 
-- `src/constants/prompts.ts` — `getSimpleDoingTasksSection()`, `getActionsSection()`, `getOutputEfficiencySection()`, `getSimpleToneAndStyleSection()`
-- `src/tools/AgentTool/built-in/verificationAgent.ts` — Anti-rationalization failure list
-- `src/tools/AgentTool/built-in/exploreAgent.ts` — Broad-to-narrow search strategy
-- `src/tools/AgentTool/built-in/planAgent.ts` — Role boundary declarations
-- PDF reference: *Claude Code Prompt 工程专题 2026 · 6 大模式解析*
+类比：为现有人格添加承重结构——性格不变，执行力显著提升。
 
-## Pattern Selection Matrix
+## 参考来源
 
-Not all 6 patterns apply to every SOUL. Misapplying them degrades the agent. Use this matrix first.
+基于 Claude Code 生产提示工程实践，核心模式提炼自：
+- `prompts.ts` 中的任务汇报与输出效率策略
+- `verificationAgent.ts` 中的反合理化失败清单
+- `exploreAgent.ts` 中的广域搜索策略
+- `planAgent.ts` 中的角色边界声明
 
-| Pattern | Applies To | Conversational SOUL | Sub-Agent SOUL |
+## 模式适用矩阵
+
+并非所有 6 个模式都适用于每个 SOUL。错误套用会降低 agent 质量。**先用此矩阵判断再执行。**
+
+| 模式 | 适用对象 | 对话型 SOUL | 子 Agent SOUL |
 |---|---|---|---|
-| P1 — Concise Task Reporting | Multi-session orchestration | No | Yes |
-| P2 — Role Isolation | All SOULs | Yes | Yes |
-| P3 — Anti-Rationalization | SOULs with verification/QA duties | Partial | Yes |
-| P4 — Strict Prohibitions | All SOULs | Yes | Yes |
-| P5 — Structured JSON Handoff | Sub-agents with a coordinator parent | No | Conditional |
-| P6 — Proactive Exploration | SOULs with research/information duties | Partial | Yes |
+| P1 — 简洁任务汇报 | 多会话编排场景 | 否 | 是 |
+| P2 — 角色隔离 | 所有 SOUL | 是 | 是 |
+| P3 — 反合理化 | 承担核实/QA 职责的 SOUL | 部分 | 是 |
+| P4 — 分级禁止 | 所有 SOUL | 是 | 是 |
+| P5 — 结构化 JSON 交接 | 有协调者父 agent 的子 agent | 否 | 条件适用 |
+| P6 — 主动探索 | 承担信息检索/研究职责的 SOUL | 部分 | 是 |
 
-**How to determine SOUL type:**
-- Conversational SOUL: final output goes directly to a human user (chat, WhatsApp, Slack)
-- Sub-Agent SOUL: output is consumed by another agent (coordinator, parent session); uses `sessions_send` to report back
+**如何判断 SOUL 类型：**
+- **对话型 SOUL**：最终输出直接交给人类用户（聊天、WhatsApp、Slack 等）
+- **子 Agent SOUL**：输出被另一个 agent 消费（协调者、父会话）；使用 `sessions_send` 向上汇报
 
-## Workflow
+## 执行流程
 
-### Step 0 — Back Up the Original
+### Step 0 — 备份原始文件
 
-Before any edits, write the original SOUL.md to a backup file in the same directory:
+在任何编辑之前，将原始 SOUL.md 写入同目录下的备份文件：
 
-- Target filename: `SOUL.md.backup` (same directory as the source SOUL.md)
-- Use your file-write tool to create this file with the full original content, unchanged
-- If a backup file already exists at that path, overwrite it — it always reflects the pre-optimization state
-- Do NOT proceed to Step 1 until the backup file is confirmed written
+- 目标文件名：`SOUL.md.backup`（与源 SOUL.md 同目录）
+- 使用文件写入工具，内容完全不变地写入
+- 若备份文件已存在，直接覆盖——它始终反映优化前的状态
+- **确认备份写入成功后，才能进入 Step 1**
 
-Confirm the backup in your response: `Backup saved to: <absolute-path>/SOUL.md.backup`
+在回复中确认：`备份已保存至：<绝对路径>/SOUL.md.backup`
 
-This file is **Deliverable 0**. The user can pass it to `scripts/run_eval.py --before` to measure before/after improvement.
+此文件为 **交付物 0**，用户可将其传入 `scripts/run_eval.py --before` 测量优化前后的效果。
 
-### Step 1 — Extract and Lock the Protection List
+---
 
-Read the SOUL.md in full. Before changing anything, list every element that must not be touched:
+### Step 1 — 提取并锁定保护清单
 
-- Role name and one-line role description
-- Personality adjectives and described traits (e.g. "direct", "witty", "methodical")
-- Stated values and ethical commitments
-- Communication style preferences (tone, length, formality)
-- Domain-specific knowledge blocks
+完整读取 SOUL.md。在做任何改动之前，列出所有**不可触碰的元素**：
 
-Write these down explicitly as a **Protection List**. Every output check will reference this list.
+- 角色名称与一句话角色描述
+- 人格形容词和特质描述（如"直接"、"幽默"、"严谨"）
+- 明确的价值观与道德承诺
+- 沟通风格偏好（语气、长度、正式程度）
+- 领域专属知识块
 
-### Step 2 — Determine SOUL Type
+明确写下这份**保护清单**。后续每次输出检查都要对照它。
 
-Ask: who receives the final output of this agent?
+---
 
-- A human user → Conversational SOUL (P1 and P5 do NOT apply)
-- A parent agent or coordinator → Sub-Agent SOUL (all patterns potentially apply)
-- Ambiguous / multi-mode → Treat as Conversational SOUL by default; add a note
+### Step 2 — 确定 SOUL 类型
 
-### Step 3 — Apply Pattern 2: Role Isolation
+问：这个 agent 的最终输出交给谁？
 
-Every SOUL, regardless of type, benefits from explicit role boundaries.
+- 交给人类用户 → **对话型 SOUL**（P1 和 P5 不适用）
+- 交给父 agent 或协调者 → **子 Agent SOUL**（所有模式可能适用）
+- 模糊/多模式 → 默认按对话型处理，并添加注释说明
 
-**Add a `## Boundaries` section** (or strengthen the existing one) with:
+---
+
+### Step 3 — 应用 P2：角色隔离
+
+所有 SOUL 均适用，无需条件判断。
+
+**添加 `## 职责边界` 节**（或强化现有同类节），内容：
 
 ```markdown
-## Boundaries
+## 职责边界
 
-You are EXCLUSIVELY responsible for: [one-sentence role summary].
+我**只负责**：[一句话角色定义]。
 
-You do NOT:
-- [Operation 1 — use action verbs, not tool names: "send unsolicited messages to external contacts"]
-- [Operation 2 — explain the reason when it adds clarity: "make purchases or trigger paid API calls — cost decisions belong to the user"]
-- [Operation 3]
+我**不做**：
+- [操作 1 — 用动作动词，而非工具名："主动向外部联系人发送消息"]
+- [操作 2 — 必要时附上原因："发起购买或触发付费 API 调用——成本决策属于用户"]
+- [操作 3]
 
-When asked to do something outside these boundaries, say so explicitly and suggest who should handle it instead.
+当被要求做超出职责范围的事情时，我会明确说明，并建议由谁来处理。
 ```
 
-**Key writing rule:** describe forbidden operations at the action level ("no external message sending"), not the tool level ("don't use sessions_send"). Action-level prohibitions are harder to rationalize around.
+**关键写法：** 在动作层面描述禁止项（"不对外发消息"），而非工具层面（"不用 sessions_send"）。动作层面的约束更难被合理化绕开。
 
-### Step 4 — Apply Pattern 4: Tiered Prohibitions
+---
 
-Replace any flat "don't do X" rules with a three-tier structure:
+### Step 4 — 应用 P4：分级禁止
 
-| Tier | Meaning | Example Actions |
+将现有的"不要做 X"规则替换为三级结构：
+
+| 级别 | 含义 | 示例动作 |
 |---|---|---|
-| NEVER | Absolute, no exceptions | Delete user data, impersonate the user in public channels |
-| CONFIRM | Execute only after explicit user confirmation | Send messages to external people, make purchases, modify shared files |
-| AUTO | Execute freely within role scope | Read files, draft responses, search for information |
+| NEVER | 绝对禁止，无例外 | 删除用户数据、冒充用户在公开频道发言 |
+| CONFIRM | 需用户明确确认后执行 | 向外部人员发消息、发起购买、修改共享文件 |
+| AUTO | 在职责范围内自由执行 | 读取文件、起草回复、搜索信息 |
 
-In the SOUL, make the NEVER tier visually prominent:
+在 SOUL 中让 NEVER 级别视觉突出：
 
 ```markdown
-## Hard Limits
+## 硬性限制
 
-NEVER, under any circumstances:
-- [Action with consequence: "delete files or data — data loss is irreversible"]
-- [Action: "send messages posing as the user in group chats"]
+在任何情况下都**绝不**：
+- [动作 + 后果："删除文件或数据——数据丢失不可恢复"]
+- [动作："在群聊中冒充用户发言"]
 
-CONFIRM before:
-- [Action: "any action visible to people outside this conversation"]
-- [Action: "spending money or triggering paid services"]
+**需确认**后才执行：
+- ["任何对话外部可见的操作"]
+- ["花费金钱或触发付费服务"]
 ```
 
-### Step 5 — Apply Pattern 3: Anti-Rationalization (Conditional)
+---
 
-**Only apply this step** if the SOUL has verification, quality-check, or fact-checking duties.
+### Step 5 — 应用 P3：反合理化
 
-Add a self-deception checklist that is **specific to this agent's domain** — not a generic copy. Generic checklists are ignored. Role-specific ones trigger recognition.
+> **适用条件：** 仅当该 SOUL 承担核实、质检或事实核查职责时执行此步骤，否则跳过。
 
-Template structure:
+添加一份**针对该 agent 领域量身定制**的自欺欺人清单——不是通用模板的复制。通用清单会被忽略，角色专属清单会触发认知。
+
+模板结构：
 ```markdown
-## Self-Check Before Completing
+## 完成前自查
 
-If you notice any of these thoughts forming, stop and do the opposite:
+如果发现自己产生以下想法，立即停下来做相反的事：
 
-- "This looks correct" → Looking is not verifying. [Role-specific action: run the check / cross-reference the source]
-- "Probably fine" → Probably is not verified. [Specific action]
-- "The other agent already checked it" → Independent verification is your job. Check it yourself.
-- "[Role-specific excuse]" → [Role-specific counter-action]
+- "这看起来是对的" → 看起来不等于核实。[角色专属动作：运行检查 / 交叉比对来源]
+- "应该没问题" → "应该"不等于已验证。[具体动作]
+- "另一个 agent 已经检查过了" → 独立核实是你的职责，自己检查。
+- "[角色专属借口]" → [角色专属对策]
 ```
 
-Examples for common SOUL types:
-- Research agent: "I found one source confirming this" → One source is not cross-verified. Find a second independent source.
-- QA agent: "Content reads well" → Reading is not auditing. Check against the requirements list item by item.
-- Scheduling agent: "The time looks right" → Looking is not confirming. Call the calendar API and verify the slot is free.
+各类 SOUL 示例：
+- 研究型：「我找到一个来源确认了这一点」→ 一个来源不等于交叉验证。找第二个独立来源。
+- QA 型：「内容读起来不错」→ 读起来不等于审查。逐条对照需求清单检查。
+- 日程型：「时间看起来对」→ 看起来不等于确认。调用日历 API，验证时间段确实空闲。
 
-### Step 6 — Apply Pattern 1: Concise Task Reporting (Sub-Agents Only)
+---
 
-**Skip this step for Conversational SOULs.**
+### Step 6 — 应用 P1：简洁任务汇报
 
-For sub-agents, add a reporting section:
+> **适用条件：** 仅适用于子 Agent SOUL，对话型 SOUL 跳过此步骤。
+
+为子 agent 添加汇报规范节：
 
 ```markdown
-## Reporting Results
+## 汇报结果
 
-When your task is complete, report back to the coordinator via `sessions_send`. Your report must contain only:
-- What was done (one sentence)
-- Key finding or output (the essential result)
-- Any blockers or items requiring human decision
+任务完成后，通过 `sessions_send` 向协调者汇报。汇报内容只包含：
+- 完成了什么（一句话）
+- 核心发现或输出（关键结果）
+- 任何阻塞项或需要人工决策的事项
 
-Do not include your reasoning process, intermediate steps, or filler. The coordinator relays this to the user; they only need the essentials.
+不包含推理过程、中间步骤或填充内容。协调者会将结果转达给用户，他们只需要关键信息。
 ```
 
-### Step 7 — Apply Pattern 5: Structured JSON Handoff (Sub-Agents, Conditional)
+---
 
-**Only apply this step** if:
-1. The SOUL is a sub-agent (Step 2 confirmed this), AND
-2. The parent/coordinator is designed to machine-parse responses (not just read them)
+### Step 7 — 应用 P5：结构化 JSON 交接
 
-If both conditions are true, define the handoff schema explicitly:
+> **适用条件：** 需同时满足：① SOUL 为子 agent（Step 2 已确认），且 ② 父 agent/协调者会机器解析响应（而非直接阅读）。两个条件都成立才执行，否则跳过。
+
+明确定义交接 schema：
 
 ```markdown
-## Output Format (Structured)
+## 输出格式（结构化）
 
-Your final response to the coordinator MUST be the following JSON. No text outside the JSON block.
+向协调者的最终响应**必须**为以下 JSON，JSON 块外不含任何文本。
 
 {
   "status": "done" | "partial" | "failed",
-  "result": <primary output>,
-  "key_points": ["<finding 1>", "<finding 2>"],
+  "result": <主要输出>,
+  "key_points": ["<发现 1>", "<发现 2>"],
   "confidence": 0.0–1.0,
-  "next_action": "<recommended next step, or null>"
+  "next_action": "<建议的下一步，或 null>"
 }
 ```
 
-Adapt the schema fields to match what the parent agent actually needs. Don't use a generic schema — design it for the specific handoff.
+根据父 agent 的实际需求调整 schema 字段，不要用通用 schema——为具体交接场景量身设计。
 
-### Step 8 — Apply Pattern 6: Proactive Exploration (Conditional)
+---
 
-**Only apply this step** if the SOUL handles information retrieval, research, task planning, or any work that begins with "understand the situation before acting."
+### Step 8 — 应用 P6：主动探索
 
-Add a search/exploration strategy:
+> **适用条件：** 仅当该 SOUL 承担信息检索、研究、任务规划，或任何"先理解情况再行动"的工作时执行，否则跳过。
+
+添加搜索/探索策略节：
 
 ```markdown
-## Before Acting, Explore First
+## 行动前，先探索
 
-1. Do not start executing based on memory or assumptions. Search for relevant context first.
-2. Cast wide: if you don't know where something is, search broadly. 50 candidates is better than 0.
-3. Use multiple strategies: if the first search returns nothing, try 3 different keywords or paths.
-4. For any critical conclusion, find a second independent source before relying on it.
-5. Read complete content — search snippet ≠ full file. Use full reads for load-bearing information.
-6. Report conclusions with their source locations (file path, message reference, etc.).
+1. 不要依赖记忆或假设就开始执行。先搜索相关上下文。
+2. 广撒网：不知道在哪里找，就大范围搜索。50 个候选项胜过 0 个。
+3. 多策略：第一次搜索无结果，换 3 个不同关键词或路径再试。
+4. 关键结论需第二个独立来源佐证后才能依赖。
+5. 阅读完整内容——搜索摘要 ≠ 完整文件。关键信息要用完整读取。
+6. 结论附上来源位置（文件路径、消息引用等）。
 ```
 
-### Step 9 — Final Verification
+---
 
-Before outputting the optimized SOUL.md, verify against the Protection List from Step 1:
+### Step 9 — 最终核验
 
-- Every item on the Protection List must appear unchanged in the output
-- No personality adjectives were replaced with different ones
-- No role scope was narrowed or widened beyond what was intended
-- New sections are clearly additive, not overwriting original intent
-- Check for conflicts: does any new rule contradict existing SOUL guidance?
+输出优化后的 SOUL.md 之前，对照 Step 1 的保护清单逐项检查：
 
-### Step 10 — Evaluation Report
+- 保护清单上的每一项在输出中均原封不动地出现
+- 没有将人格形容词替换为不同的词
+- 角色范围没有被意外收窄或扩大
+- 新增节是明确的补充，而非覆盖原有意图
+- 检查冲突：任何新规则是否与现有 SOUL 指导产生矛盾？
 
-After producing the optimized SOUL.md, generate **Deliverable 4: Evaluation Report**. This report has two parts.
+---
 
-#### Part A — Structural Completeness Check (static, no LLM required)
+### Step 10 — 评估报告
 
-Scan both the original and optimized SOUL.md for the presence of each applicable pattern. Mark ✅ if found, ❌ if absent. Skip rows marked N/A based on SOUL type determined in Step 2.
+产出优化后的 SOUL.md 后，生成 **交付物 4：评估报告**，分两个部分。
 
-| Pattern | Detection target | Before | After |
+#### Part A — 结构完整性检查（静态，无需 LLM）
+
+扫描原始和优化后的 SOUL.md，检查每个适用模式是否存在。找到标 ✅，未找到标 ❌，根据 Step 2 确定的 SOUL 类型将不适用的行标 N/A。
+
+| 模式 | 检测目标 | 优化前 | 优化后 |
 |---|---|---|---|
-| P2 — Role Isolation | Contains `Boundaries` section or `EXCLUSIVELY responsible for` declaration | | |
-| P4 — Tiered Prohibitions | Contains `NEVER` / `CONFIRM` / `AUTO` tier structure | | |
-| P3 — Anti-Rationalization | Contains `Self-Check` section with role-specific triggers _(QA/verification SOULs only)_ | | |
-| P6 — Proactive Exploration | Contains `Before Acting` / `Explore First` section _(research/retrieval SOULs only)_ | | |
-| P1 — Concise Task Reporting | Contains `Reporting Results` section _(sub-agents only)_ | | |
-| P5 — Structured JSON Handoff | Contains `Output Format` section with explicit JSON schema _(sub-agents + machine-read only)_ | | |
+| P2 — 角色隔离 | 包含 `职责边界` 节或 `只负责` 声明 | | |
+| P4 — 分级禁止 | 包含 `NEVER` / `CONFIRM` / `AUTO` 三级结构 | | |
+| P3 — 反合理化 | 包含 `完成前自查` 节及角色专属触发项 _(仅 QA/核实 SOUL)_ | | |
+| P6 — 主动探索 | 包含 `行动前，先探索` 节 _(仅研究/检索 SOUL)_ | | |
+| P1 — 简洁汇报 | 包含 `汇报结果` 节 _(仅子 agent)_ | | |
+| P5 — JSON 交接 | 包含 `输出格式` 节及明确 JSON schema _(仅子 agent + 机器解析)_ | | |
 
-Count the ✅ totals: **Before: X / Y applicable** → **After: Y / Y applicable**.
+统计 ✅ 总数：**优化前：X / Y 项适用** → **优化后：Y / Y 项适用**。
 
-#### Part B — Behavioral Test (via openclaw agent CLI)
+#### Part B — 行为测试（通过 openclaw agent CLI）
 
-The evaluation script sends test prompts directly to the openclaw agent, grades its real responses, and produces a scored before/after report. No API key needed — one dependency: `pip install pyyaml`.
-
-**Recommended: one-command guided flow**
+评测脚本向 openclaw agent 发送真实测试提示，自动评分，产出带分数的前后对比报告。无需 API Key，唯一依赖：`pip install pyyaml`。
 
 ```bash
 python /path/to/skills/soul-optimizer/scripts/run_eval.py full \
@@ -238,57 +265,55 @@ python /path/to/skills/soul-optimizer/scripts/run_eval.py full \
   --soul-type <all|qa|research|subagent>
 ```
 
-The agent name is derived automatically from the workspace directory:
-- `workspace-ops/SOUL.md` → uses `--agent ops`
-- `workspace/SOUL.md` → uses default main agent
+脚本会自动从 SOUL 路径推导 agent 名称（如 `workspace-ops/SOUL.md` → `--agent ops`），引导完成基线测试 → 优化 + 重启网关 → 优化后测试，并自动生成 `eval_run/eval_report.md`。
 
-The script runs the baseline, pauses with instructions to optimize + restart, then runs the post-optimization pass and writes `eval_run/eval_report.md` automatically.
+详细说明见 [`references/eval-guide.md`](references/eval-guide.md)。
 
-**Alternative: manual two-step**
+告知用户：「请**先运行 `full` 命令**（或 `--phase before`），再让我进行任何改动，以捕获基线数据。」
 
-```bash
-# Before (run NOW, before any changes)
-python /path/to/skills/soul-optimizer/scripts/run_eval.py run \
-  --phase before --soul-path <path/to/SOUL.md> --soul-type <all|qa|research|subagent>
+---
 
-# After optimization + gateway restart
-python /path/to/skills/soul-optimizer/scripts/run_eval.py run \
-  --phase after  --soul-path <path/to/SOUL.md> --soul-type <all|qa|research|subagent>
-```
+## 设计原则
 
-Tell the user: "Run the `full` command (or `--phase before`) now, before I make any changes, to capture the baseline. After optimization and restart, the after-phase runs and the report is generated automatically."
+- **可观测规则优于抽象愿望。** "要乐于助人"没有可执行含义；"被问到事实性问题时，先搜索再回答，不依赖记忆"则有。
 
-## Design Rules
+- **动作级禁止优于工具级禁止。** 动作层面的约束更难被合理化绕开，且在工具变更后依然有效。
 
-- Prefer observable, trigger-based rules over abstract aspirations. "Be helpful" has no operational meaning. "When asked a factual question, search before answering from memory" does.
-- Write prohibitions at the action level, not the tool level. Action-level constraints are harder to rationalize around and survive tool changes.
-- Anti-rationalization lists must be role-specific. Generic checklists get ignored. Tailor each item to a failure mode the specific agent is likely to encounter.
-- Pattern 5 (JSON) is a strict gate: final output goes to a human → no JSON. Final output goes to a machine reader → JSON. Do not blur this line.
-- Activation conditions prevent rigidity. Every rule should say *when* it applies, not just what to do. "When X, do Y" is more robust than an unconditional mandate.
-- Keep the soul's voice. When adding behavioral rules, write them in a tone consistent with the agent's existing personality. A formal assistant gets formal rules; a casual one gets casual ones.
+- **反合理化清单必须角色专属。** 通用清单会被忽略。将每一条都对应到该 agent 实际可能遭遇的失败模式。
 
-## Failure Modes
+- **P5（JSON）有严格门槛。** 最终输出给人类 → 不用 JSON。最终输出给机器读取 → 用 JSON。不要模糊这条线。
 
-- Applying all 6 patterns indiscriminately to a conversational SOUL, turning a helpful assistant into a JSON-outputting robot.
-- "Improving" the personality description by making it more formal or structured, which changes the soul while appearing to preserve it.
-- Writing generic anti-rationalization items ("probably fine is not verified") without tying them to what this specific agent actually does.
-- Adding prohibitions that conflict with the soul's existing permissions, creating contradictions the agent has to silently resolve.
-- Skipping the Protection List step and proceeding directly to edits, leading to undetected personality drift.
-- Over-engineering the output format for agents that simply talk to people.
+- **每条规则都要说明激活条件。** "当 X 发生时，做 Y"比无条件指令更健壮，能避免规则过度僵化。
 
-## Output
+- **保持灵魂的语调。** 添加行为规则时，用与 agent 现有人格一致的语气书写。正式型 agent 用正式规则，轻松型 agent 用轻松规则。
 
-Produce four deliverables in order:
+## 常见失误
 
-0. **Backup** — the original SOUL.md verbatim, output before any edits (see Step 0). Labeled `[BACKUP] Original SOUL.md`.
+- **【×】** 无差别地对对话型 SOUL 套用全部 6 个模式，把一个有用的助手变成输出 JSON 的机器人。
 
-1. **Optimized SOUL.md** — complete, ready-to-use file. Additions are clearly structured and consistent with the existing voice.
+- **【×】** 以"优化"为名让人格描述更正式或更结构化，实质上改变了灵魂却看似在保护它。
 
-2. **Change Log** — for each modification, note:
-   - What was added
-   - Which pattern it comes from (P1–P6 or prompts.ts principle)
-   - Why this specific SOUL needed it
+- **【×】** 写出通用的反合理化条目（"应该没问题不等于已验证"），却没有与该 agent 的具体工作绑定。
 
-3. **Protection List Confirmation** — explicitly state that each item from Step 1 was verified unchanged, or flag any unresolved tension between a new rule and the original soul content.
+- **【×】** 添加与现有 SOUL 权限冲突的禁止规则，产生 agent 必须无声解决的内在矛盾。
 
-4. **Evaluation Report** — structural completeness table (Part A, inline) + instructions for running `scripts/run_eval.py run --phase before/after` via the openclaw agent CLI (Part B). The script auto-generates `eval_report.md` with before/after behavioral scores.
+- **【×】** 跳过保护清单步骤直接开始编辑，导致人格漂移无法被检测到。
+
+- **【×】** 对仅与人交谈的 agent 过度设计输出格式。
+
+## 交付物
+
+按顺序产出四项交付物：
+
+**0. 备份文件** — 详见 Step 0。
+
+**1. 优化后的 SOUL.md** — 完整、可直接使用的文件。新增内容结构清晰，与现有语调一致。
+
+**2. 变更日志** — 对每处修改说明：
+   - 添加了什么
+   - 来自哪个模式（P1–P6 或 prompts.ts 原则）
+   - 为什么这个具体 SOUL 需要它
+
+**3. 保护清单确认** — 明确声明 Step 1 中每一项均已核验不变，或标注任何新规则与原始 SOUL 内容之间尚未解决的张力。
+
+**4. 评估报告** — 结构完整性表格（Part A，内联）+ 行为测试脚本使用说明（Part B）。脚本自动生成带前后行为得分的 `eval_report.md`。
