@@ -49,48 +49,46 @@ SOUL_TYPE_HIERARCHY = {
 # Agent name derivation
 # ---------------------------------------------------------------------------
 
-def derive_agent_from_soul_path(soul_path: Path) -> str | None:
+def derive_agent_from_soul_path(soul_path: Path) -> str:
     """
     Derive the openclaw agent name from a SOUL.md file path.
 
     Rules (based on openclaw workspace naming convention):
         ~/.openclaw/workspace-ops/SOUL.md  ->  "ops"
-        ~/.openclaw/workspace/SOUL.md      ->  None  (default main agent)
+        ~/.openclaw/workspace/SOUL.md      ->  "main"  (default agent)
 
-    Returns the agent name string, or None if the path points to the default
-    workspace (no --agent flag needed for openclaw CLI).
+    Always returns a non-empty string — openclaw CLI requires
+    `--agent <name>` explicitly, even for the default agent.
     """
     for part in soul_path.resolve().parts:
         if part.startswith("workspace-"):
             return part[len("workspace-"):]
         if part == "workspace":
-            return None
-    return None
+            return "main"
+    return "main"
 
 
-def resolve_agent(args: argparse.Namespace) -> tuple[str | None, str]:
+def resolve_agent(args: argparse.Namespace) -> tuple[str, str]:
     """
     Determine the agent name and a human-readable description.
 
     Priority:
-      1. --agent explicitly provided  →  use as-is
-      2. --soul-path provided          →  derive from workspace directory name
-      3. neither                       →  use default main agent (no --agent flag)
+      1. --agent explicitly provided  ->  use as-is
+      2. --soul-path provided          ->  derive from workspace directory name
+      3. neither                       ->  default to "main"
 
-    Returns (agent_name_or_None, description_string).
+    Always returns (agent_name, description). openclaw CLI requires
+    `--agent <name>` even for the default main agent.
     """
     if args.agent:
-        return args.agent, f"{args.agent} (explicit --agent)"
+        return args.agent, f"{args.agent}（显式 --agent）"
 
     soul_path = getattr(args, "soul_path", None)
     if soul_path:
         derived = derive_agent_from_soul_path(Path(soul_path))
-        if derived:
-            return derived, f"{derived} (derived from {Path(soul_path).parent.name})"
-        else:
-            return None, "main (default, derived from workspace)"
+        return derived, f"{derived}（从 {Path(soul_path).parent.name} 推导）"
 
-    return None, "main (default)"
+    return "main", "main（默认）"
 
 
 # ---------------------------------------------------------------------------
@@ -160,17 +158,15 @@ def load_tasks(soul_type: str) -> list[dict]:
 # openclaw agent execution
 # ---------------------------------------------------------------------------
 
-def call_openclaw(agent: str | None, message: str, timeout: int = 120) -> str:
+def call_openclaw(agent: str, message: str, timeout: int = 120) -> str:
     """Send a message to an openclaw agent via CLI and return the response."""
-    cmd = ["openclaw", "agent", "--message", message]
-    if agent:
-        cmd += ["--agent", agent]
+    cmd = ["openclaw", "agent", "--agent", agent, "--message", message]
     result = subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout,
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"openclaw agent exited with code {result.returncode}:\n{result.stderr.strip()}"
+            f"openclaw agent 执行失败（退出码 {result.returncode}）:\n{result.stderr.strip()}"
         )
     return result.stdout.strip()
 
@@ -198,7 +194,7 @@ def render_phase_table(results: list[dict]) -> str:
     """Render a single-phase score table for terminal output."""
     lines = [
         "",
-        "| Task | Criterion | Score |",
+        "| 任务 | 评测标准 | 得分 |",
         "|---|---|---|",
     ]
     total = 0.0
@@ -210,7 +206,7 @@ def render_phase_table(results: list[dict]) -> str:
             lines.append(f"| {r['task_name']} | {criterion} | {s:.1f} {mark} |")
             total += s
             possible += 1.0
-    lines.append(f"| **Total** | | **{total:.1f} / {possible:.0f}** |")
+    lines.append(f"| **总计** | | **{total:.1f} / {possible:.0f}** |")
     lines.append("")
     return "\n".join(lines)
 
@@ -224,14 +220,14 @@ def render_comparison_report(
     """Render a before/after comparison markdown report."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [
-        "# Soul Optimizer — Evaluation Report",
+        "# Soul Optimizer — 评测报告",
         "",
-        f"**Date:** {now}  ",
-        f"**Soul type:** `{before_data.get('soul_type', 'all')}`  ",
+        f"**日期：** {now}  ",
+        f"**Soul 类型：** `{before_data.get('soul_type', 'all')}`  ",
         "",
         "---",
         "",
-        "## Results by Task",
+        "## 各任务评测结果",
         "",
     ]
 
@@ -254,9 +250,9 @@ def render_comparison_report(
 
         lines += [
             f"### {task_name} (`{task_id}`)",
-            f"**Tests patterns:** {patterns_str}",
+            f"**测试模式：** {patterns_str}",
             "",
-            "| Criterion | Before | After | Delta |",
+            "| 评测标准 | 优化前 | 优化后 | 差值 |",
             "|---|---|---|---|",
         ]
 
@@ -279,11 +275,10 @@ def render_comparison_report(
 
         td = task_after - task_before
         td_str = f"+{td:.1f}" if td > 0 else f"{td:.1f}" if td < 0 else "0.0"
-        lines.append(f"| **Task total** | **{task_before:.1f}** | **{task_after:.1f}** | **{td_str}** |")
+        lines.append(f"| **任务小计** | **{task_before:.1f}** | **{task_after:.1f}** | **{td_str}** |")
         lines.append("")
 
-        # Response previews
-        for label, phase_dir in [("Before", before_dir), ("After", after_dir)]:
+        for label, phase_dir in [("优化前", before_dir), ("优化后", after_dir)]:
             resp_file = phase_dir / "responses" / f"{task_id}.txt"
             if resp_file.exists():
                 preview = textwrap.shorten(
@@ -291,7 +286,7 @@ def render_comparison_report(
                 )
                 lines += [
                     "<details>",
-                    f"<summary>{label} response (preview)</summary>",
+                    f"<summary>{label}回复（预览）</summary>",
                     "",
                     "```",
                     preview,
@@ -309,31 +304,28 @@ def render_comparison_report(
     pct_a = (grand_after / grand_possible * 100) if grand_possible else 0
 
     lines += [
-        "## Summary",
+        "## 总结",
         "",
-        "| | Score | % |",
+        "| | 得分 | 百分比 |",
         "|---|---|---|",
-        f"| Before | {grand_before:.1f} / {grand_possible:.0f} | {pct_b:.0f}% |",
-        f"| After  | {grand_after:.1f} / {grand_possible:.0f} | {pct_a:.0f}% |",
-        f"| **Delta** | **{grand_after - grand_before:+.1f}** | **{pct_a - pct_b:+.0f}pp** |",
+        f"| 优化前 | {grand_before:.1f} / {grand_possible:.0f} | {pct_b:.0f}% |",
+        f"| 优化后 | {grand_after:.1f} / {grand_possible:.0f} | {pct_a:.0f}% |",
+        f"| **差值** | **{grand_after - grand_before:+.1f}** | **{pct_a - pct_b:+.0f}pp** |",
         "",
     ]
 
     delta = grand_after - grand_before
     if delta > 0:
         lines.append(
-            f"> Optimization improved behavioral compliance by {delta:+.1f} points "
-            f"({pct_a - pct_b:+.0f}pp)."
+            f"> 优化后行为合规性提升了 {delta:+.1f} 分（{pct_a - pct_b:+.0f}pp）。"
         )
     elif delta == 0:
         lines.append(
-            "> No measurable behavioral change detected. "
-            "Review whether applicable patterns were applied."
+            "> 未检测到可量化的行为变化。请检查是否正确应用了相关模式。"
         )
     else:
         lines.append(
-            f"> Behavioral compliance decreased by {abs(delta):.1f} points. "
-            "Review the optimized SOUL for regressions."
+            f"> 行为合规性下降了 {abs(delta):.1f} 分。请检查优化后的 SOUL 是否存在退化。"
         )
 
     return "\n".join(lines) + "\n"
@@ -363,16 +355,17 @@ def run_phase(
         print(f"No tasks found for soul-type '{soul_type}' in {TASKS_DIR}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Running {len(tasks)} task(s) via openclaw agent (phase: {phase})...")
+    phase_label = "优化前" if phase == "before" else "优化后"
+    print(f"正在运行 {len(tasks)} 个任务（阶段：{phase_label}）...")
     print()
 
     results = []
     for task in tasks:
-        print(f"  [{task['id']}] {task['name']}...", end=" ", flush=True)
+        print(f"  [{task['id']}] {task['name']}…", end=" ", flush=True)
         try:
             response = call_openclaw(agent, task["prompt"], timeout=timeout)
         except Exception as e:
-            print(f"FAILED\n    {e}", file=sys.stderr)
+            print(f"失败\n    {e}", file=sys.stderr)
             response = ""
 
         resp_file = responses_dir / f"{task['id']}.txt"
@@ -413,8 +406,8 @@ def run_phase(
     print(render_phase_table([
         {"task_name": r["name"], "scores": r["scores"]} for r in results
     ]))
-    print(f"Phase '{phase}' complete: {grand_total:.1f} / {grand_possible:.0f}")
-    print(f"Results saved to: {scores_file}")
+    print(f"阶段「{phase_label}」完成：{grand_total:.1f} / {grand_possible:.0f}")
+    print(f"结果已保存至：{scores_file}")
 
     return scores_data
 
@@ -424,17 +417,17 @@ def maybe_write_report(eval_dir: Path, after_data: dict) -> None:
     before_dir = eval_dir / "before"
     before_scores_file = before_dir / "scores.json"
     if before_scores_file.exists():
-        print("\nBefore-phase data found — generating comparison report...")
+        print("\n检测到优化前数据，正在生成对比报告…")
         before_data = json.loads(before_scores_file.read_text(encoding="utf-8"))
         after_dir = eval_dir / "after"
         report = render_comparison_report(before_data, after_data, before_dir, after_dir)
         report_path = eval_dir / "eval_report.md"
         report_path.write_text(report, encoding="utf-8")
-        print(f"Report written to: {report_path.resolve()}")
+        print(f"报告已生成：{report_path.resolve()}")
     else:
         print(
-            f"\nNo before-phase data at {before_scores_file} — skipping comparison report.\n"
-            "Run with --phase before first, then --phase after to get a comparison."
+            f"\n未找到优化前数据（{before_scores_file}），跳过对比报告。\n"
+            "请先运行 --phase before，再运行 --phase after。"
         )
 
 
@@ -445,7 +438,7 @@ def maybe_write_report(eval_dir: Path, after_data: dict) -> None:
 def cmd_run(args: argparse.Namespace) -> None:
     """Execute tasks for a single phase, grade, and save results."""
     agent, agent_desc = resolve_agent(args)
-    print(f"Agent: {agent_desc}")
+    print(f"Agent：{agent_desc}")
 
     scores_data = run_phase(
         phase=args.phase,
@@ -472,15 +465,15 @@ def cmd_full(args: argparse.Namespace) -> None:
     soul_path = getattr(args, "soul_path", None)
 
     print("=" * 60)
-    print("Soul Optimizer — Full Evaluation")
+    print("Soul Optimizer — 完整评测流程")
     print("=" * 60)
-    print(f"Agent:     {agent_desc}")
-    print(f"Soul type: {args.soul_type}")
-    print(f"Eval dir:  {eval_dir.resolve()}")
+    print(f"Agent：    {agent_desc}")
+    print(f"Soul 类型：{args.soul_type}")
+    print(f"输出目录： {eval_dir.resolve()}")
     print()
 
     # --- Phase: before ---
-    print("[ Phase 1 / 2 ] Before optimization")
+    print("[ 阶段 1 / 2 ] 优化前基准测试")
     print("-" * 40)
     before_data = run_phase(
         phase="before",
@@ -493,24 +486,24 @@ def cmd_full(args: argparse.Namespace) -> None:
     # --- Pause for optimization + restart ---
     print()
     print("=" * 60)
-    print(f"Before-phase complete: {before_data['total']:.1f} / {before_data['possible']:.0f}")
+    print(f"优化前基准得分：{before_data['total']:.1f} / {before_data['possible']:.0f}")
     print()
-    print("Next steps:")
+    print("接下来请执行：")
     if soul_path:
-        print(f"  1. Run soul-optimizer on:  {soul_path}")
+        print(f"  1. 对以下文件运行 soul-optimizer：{soul_path}")
     else:
-        print("  1. Run soul-optimizer on your SOUL.md")
-    print("  2. Run:  openclaw gateway restart")
-    print("  3. Press Enter here when the gateway is back up")
+        print("  1. 对你的 SOUL.md 运行 soul-optimizer")
+    print("  2. 执行：openclaw gateway restart")
+    print("  3. 等 gateway 重启完成后，在此按回车继续")
     print("=" * 60)
     try:
-        input("\nPress Enter to continue...\n")
+        input("\n按回车继续…\n")
     except KeyboardInterrupt:
-        print("\nAborted.")
+        print("\n已中断。")
         sys.exit(0)
 
     # --- Phase: after ---
-    print("[ Phase 2 / 2 ] After optimization")
+    print("[ 阶段 2 / 2 ] 优化后对比测试")
     print("-" * 40)
     after_data = run_phase(
         phase="after",
@@ -522,14 +515,13 @@ def cmd_full(args: argparse.Namespace) -> None:
 
     # --- Comparison report (always generated in full mode) ---
     print()
-    print("Generating comparison report...")
+    print("正在生成对比报告…")
     before_dir = eval_dir / "before"
     after_dir = eval_dir / "after"
     report = render_comparison_report(before_data, after_data, before_dir, after_dir)
     report_path = eval_dir / "eval_report.md"
     report_path.write_text(report, encoding="utf-8")
 
-    # Print inline summary
     delta = after_data["total"] - before_data["total"]
     possible = before_data["possible"]
     pct_b = (before_data["total"] / possible * 100) if possible else 0
@@ -537,11 +529,11 @@ def cmd_full(args: argparse.Namespace) -> None:
 
     print()
     print("=" * 60)
-    print("Evaluation complete")
-    print(f"  Before: {before_data['total']:.1f} / {possible:.0f}  ({pct_b:.0f}%)")
-    print(f"  After:  {after_data['total']:.1f} / {possible:.0f}  ({pct_a:.0f}%)")
-    print(f"  Delta:  {delta:+.1f} ({pct_a - pct_b:+.0f}pp)")
-    print(f"\nFull report: {report_path.resolve()}")
+    print("评测完成")
+    print(f"  优化前：{before_data['total']:.1f} / {possible:.0f}  ({pct_b:.0f}%)")
+    print(f"  优化后：{after_data['total']:.1f} / {possible:.0f}  ({pct_a:.0f}%)")
+    print(f"  差值：  {delta:+.1f}（{pct_a - pct_b:+.0f}pp）")
+    print(f"\n完整报告：{report_path.resolve()}")
     print("=" * 60)
 
 
@@ -550,10 +542,10 @@ def cmd_report(args: argparse.Namespace) -> None:
     before_dir = Path(args.before)
     after_dir = Path(args.after)
 
-    for label, d in [("before", before_dir), ("after", after_dir)]:
+    for label, d in [("优化前", before_dir), ("优化后", after_dir)]:
         sf = d / "scores.json"
         if not sf.exists():
-            print(f"Error: {label} scores not found at {sf}", file=sys.stderr)
+            print(f"错误：{label}得分文件未找到：{sf}", file=sys.stderr)
             sys.exit(1)
 
     before_data = json.loads((before_dir / "scores.json").read_text(encoding="utf-8"))
@@ -562,7 +554,7 @@ def cmd_report(args: argparse.Namespace) -> None:
     report = render_comparison_report(before_data, after_data, before_dir, after_dir)
     output = Path(args.output)
     output.write_text(report, encoding="utf-8")
-    print(f"Report written to: {output.resolve()}")
+    print(f"报告已生成：{output.resolve()}")
 
 
 # ---------------------------------------------------------------------------
